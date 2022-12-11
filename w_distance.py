@@ -16,6 +16,9 @@ def w_distance(x, p, q):
         distance: the 1-Wasserstein distance between p and q
         T: ndarray, has shape (num_bins, num_bins), the optimal transport matrix
     '''
+    # if data is 1D, use scipy.stats library to compute the 1-Wasserstein distance
+    if x.ndim == 1:
+        return stats.wasserstein_distance(x, x, p, q)
     # check the input
     assert x.shape[0] == p.shape[0] == q.shape[0], 'The number of bins should be the same for p and q'
     assert np.allclose(np.sum(p), 1), 'The sum of p should be 1'
