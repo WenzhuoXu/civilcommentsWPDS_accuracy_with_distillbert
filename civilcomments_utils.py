@@ -158,3 +158,4 @@ def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, d
         print('Val loss: {:.4f}, Val metric: {:.4f}'.format(avg_loss, avg_metric))
 
     model.train()
+    return avg_loss, avg_metric
