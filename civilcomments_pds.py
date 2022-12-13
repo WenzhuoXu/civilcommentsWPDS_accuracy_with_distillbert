@@ -12,7 +12,7 @@ if __name__ == '__main__':
 
     # run training on different fractions of dataset
     for i in range(len(frac)):
-        loss[i], accuracy[i], distance[i] = train(frac=frac[i], test_frac=test_frac, num_epochs=1000)
+        loss[i], accuracy[i], distance[i] = train(frac=frac[i], test_frac=test_frac, batch_size = 32, num_epochs=17)
         print('loss:', loss[i], 'accuracy:', accuracy[i], 'distance:', distance[i])
 
     # save and plot the results

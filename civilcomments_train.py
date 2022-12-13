@@ -87,11 +87,11 @@ def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_siz
         logger.add_scalar('accuracy', avg_accuracy, epoch)
 
         # test accuracy every 25 epochs
-        if epoch % 25 == 0:
+        if epoch % 2 == 0 and epoch != 0:
             evaluate_model(model, val_dataloader, logger, epoch, loss_fn, eval_metric, device)
 
         # save the model every 100 epochs
-        if epoch % 100 == 0:
+        if epoch % 2 == 0 and epoch != 0:
             checkpoint_save(model, savedir, epoch)
 
     # save the model
@@ -104,7 +104,8 @@ def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_siz
     test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
 
     prob_train, prob_test = get_data_distribution(train_dataset, test_dataset)
-    w_distance_metric = w_distance(prob_train, prob_test)
+    x = np.arange(0, prob_train.shape[0])
+    w_distance_metric = w_distance(x, prob_train, prob_test)
     print('Wassertein distance between train and eval datasets:', w_distance_metric)
 
     test_loss, test_accuracy = evaluate_model(model, test_dataloader, logger, 0, loss_fn, eval_metric, device, checkpoint=os.path.join(savedir, 'checkpoint-{:06d}.pth'.format(epoch)))
