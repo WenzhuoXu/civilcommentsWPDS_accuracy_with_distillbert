@@ -10,7 +10,7 @@ from w_distance import w_distance
 import numpy as np
 
 
-def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_size=8, lr=1e-5, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
+def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_size=8, lr=1e-4, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
     # set up the device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
@@ -23,13 +23,17 @@ def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_siz
 
     # set up the dataset
     seed = 2022
-    frac = 0.5 # fraction of the dataset to use
+    # frac = 0.5 # fraction of the dataset to use
     transform = initialize_bert_transform(model_name, 512)
-    train_dataset = CivilCommentsWPDS(magic=seed).get_subset('train', frac, transform=transform)
+    # train_dataset = CivilCommentsWPDS(magic=seed).get_subset('train', frac, transform=transform)
+    dataset = CivilCommentsWPDS(magic=seed).get_batch(t=batch_num, transform=transform)
+    train_dataset, val_dataset = torch.utils.data.random_split(dataset, [int(len(dataset)*0.8), len(dataset)-int(len(dataset)*0.8)])
+    # train_dataset = CivilCommentsWPDS(magic=seed).get_batch(t=batch_num, transform=transform)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
     # set up testing dataset
-    val_dataset = CivilCommentsWPDS(magic=seed).get_subset('val', frac, transform=transform)
+    # val_dataset = CivilCommentsWPDS(magic=seed).get_subset('val', frac, transform=transform)
+    # val_dataset = CivilCommentsWPDS(magic=seed).get_batch(t=batch_num, transform=transform)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=True)
 
     # set up the loss function
@@ -57,9 +61,9 @@ def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_siz
         for i, batch in enumerate(train_dataloader):
             optimizer.zero_grad()
 
-            attention_mask, is_good, detailed_description = batch
+            attention_mask, is_good = batch
             attention_mask = attention_mask.to(device)
-            detailed_description = detailed_description.to(device)
+            # detailed_description = detailed_description.to(device)
             is_good = is_good.to(device)
 
             # forward pass
@@ -98,17 +102,17 @@ def train(frac=0.5, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_siz
     checkpoint_save(model, savedir, epoch)
 
     # test model on a new batch / a larger fraction of the dataset
-    batch_num = test_batch_num # intended batch number if getting a batch
-    test_dataset = CivilCommentsWPDS(magic=seed).get_subset('test', test_frac, transform=transform) # on a larger fraction of the dataset
-    # test_dataset = CivilCommentsWPDS(magic=seed).get_batch(t=batch_num, transform=transform) # on a batch
-    test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
+    # test_dataset = CivilCommentsWPDS(magic=seed).get_subset('test', test_frac, transform=transform) # on a larger fraction of the dataset
+    for j in range(test_batch_num):
+        test_dataset = CivilCommentsWPDS(magic=seed).get_batch(t=j, transform=transform)
+        test_dataloader = DataLoader(test_dataset, batch_size=16, shuffle=True)
 
-    prob_train, prob_test = get_data_distribution(train_dataset, test_dataset)
-    x = np.arange(0, prob_train.shape[0])
-    w_distance_metric = w_distance(x, prob_train, prob_test)
-    print('Wassertein distance between train and eval datasets:', w_distance_metric)
+        prob_train, prob_test = get_data_distribution(train_dataset, test_dataset)
+        x = np.arange(0, prob_train.shape[0])
+        w_distance_metric = w_distance(x, prob_train, prob_test)
+        print('Wassertein distance between train and eval datasets:', w_distance_metric)
 
-    test_loss, test_accuracy = evaluate_model(model, test_dataloader, logger, 0, loss_fn, eval_metric, device, checkpoint=os.path.join(savedir, 'checkpoint-{:06d}.pth'.format(epoch)))
+        test_loss, test_accuracy = evaluate_model(model, test_dataloader, logger, j, loss_fn, eval_metric, device, checkpoint=os.path.join(savedir, 'checkpoint-{:06d}.pth'.format(epoch)), mode='test')
 
     return test_loss, test_accuracy, w_distance_metric
 
@@ -121,17 +125,17 @@ def get_data_distribution(dataset_1, dataset_2):
         In this case, the prob is multinomial
     """
     # initialize the distribution
-    prob_1_m = np.zeros(dataset_1.n_classes)
-    prob_2_m = np.zeros(dataset_2.n_classes)
+    prob_1_m = np.zeros(dataset_1.dataset.n_classes)
+    prob_2_m = np.zeros(dataset_2.dataset.n_classes)
 
-    y1_array = np.array(dataset_1.y_array)
-    y2_array = np.array(dataset_2.y_array)
+    y1_array = np.array(dataset_1.dataset.y_array)
+    y2_array = np.array(dataset_2.dataset.y_array)
 
     # assign distribution to classes
-    for i in range(dataset_1.n_classes):
+    for i in range(dataset_1.dataset.n_classes):
         prob_1_m[i] = len(y1_array[y1_array == i]) / len(y1_array)
     
-    for i in range(dataset_2.n_classes):
+    for i in range(dataset_2.dataset.n_classes):
         prob_2_m[i] = len(y2_array[y2_array == i]) / len(y2_array)
 
     return prob_1_m, prob_2_m

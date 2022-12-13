@@ -123,7 +123,7 @@ def checkpoint_load(model, name):
     return epoch
 
 
-def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, device, checkpoint=None):
+def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, device, checkpoint=None, mode='val'):
     # load checkpoint if provided
     if checkpoint is not None:
         checkpoint_load(model, checkpoint)
@@ -134,10 +134,10 @@ def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, d
         avg_metric = 0
 
         for batch in dataloader:
-            attention_mask, is_good, detailed_description = batch
+            attention_mask, is_good = batch
             attention_mask = attention_mask.to(device)
             is_good = is_good.to(device)
-            detailed_description = detailed_description.to(device)
+            # detailed_description = detailed_description.to(device)
 
             logits = model(attention_mask)
             # compute loss
@@ -151,11 +151,17 @@ def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, d
         avg_loss /= len(dataloader)
         avg_metric /= len(dataloader)
 
-        logger.add_scalar('val_loss', avg_loss, iteration)
-        logger.add_scalar('val_metric', avg_metric, iteration)
+        if mode == 'val':
+            logger.add_scalar('val_loss', avg_loss, iteration)
+            logger.add_scalar('val_metric', avg_metric, iteration)
+            print('-' * 72)
+            print('Val loss: {:.4f}, Val metric: {:.4f}'.format(avg_loss, avg_metric))
 
-        print('-' * 72)
-        print('Val loss: {:.4f}, Val metric: {:.4f}'.format(avg_loss, avg_metric))
+        if mode == 'test':
+            logger.add_scalar('test_loss', avg_loss, iteration)
+            logger.add_scalar('test_metric', avg_metric, iteration)
+            print('-' * 72)
+            print('Test loss: {:.4f}, Test metric: {:.4f}'.format(avg_loss, avg_metric))
 
     model.train()
     return avg_loss, avg_metric
