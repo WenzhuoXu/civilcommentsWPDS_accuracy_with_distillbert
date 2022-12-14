@@ -1,7 +1,9 @@
 import os
 import warnings
 from datetime import datetime
+from typing import Any
 
+import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
@@ -123,7 +125,7 @@ def checkpoint_load(model, name):
     return epoch
 
 
-def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, device, checkpoint=None, mode='val'):
+def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, device, mode, checkpoint=None):
     # load checkpoint if provided
     if checkpoint is not None:
         checkpoint_load(model, checkpoint)
@@ -165,3 +167,124 @@ def evaluate_model(model, dataloader, logger, iteration, loss_fn, eval_metric, d
 
     model.train()
     return avg_loss, avg_metric
+
+
+def to_ndarray(item: Any, dtype: np.dtype = None) -> np.ndarray:
+    r"""
+    Overview:
+        Change `torch.Tensor`, sequence of scalars to ndarray, and keep other data types unchanged.
+    Arguments:
+        - item (:obj:`object`): the item to be changed
+        - dtype (:obj:`type`): the type of wanted ndarray
+    Returns:
+        - item (:obj:`object`): the changed ndarray
+    .. note:
+
+        Now supports item type: :obj:`torch.Tensor`,  :obj:`dict`, :obj:`list`, :obj:`tuple` and :obj:`None`
+    """
+    def transform(d):
+        if dtype is None:
+            return np.array(d)
+        else:
+            return np.array(d, dtype=dtype)
+
+    if isinstance(item, dict):
+        new_data = {}
+        for k, v in item.items():
+            new_data[k] = to_ndarray(v, dtype)
+        return new_data
+    elif isinstance(item, list) or isinstance(item, tuple):
+        if len(item) == 0:
+            return None
+        elif hasattr(item, '_fields'):  # namedtuple
+            return type(item)(*[to_ndarray(t, dtype) for t in item])
+        else:
+            new_data = []
+            for t in item:
+                new_data.append(to_ndarray(t, dtype))
+            return new_data
+    elif isinstance(item, torch.Tensor):
+        if item.device != 'cpu':
+            item = item.detach().cpu()
+        if dtype is None:
+            return item.numpy()
+        else:
+            return item.numpy().astype(dtype)
+    elif isinstance(item, np.ndarray):
+        if dtype is None:
+            return item
+        else:
+            return item.astype(dtype)
+    elif isinstance(item, bool) or isinstance(item, str):
+        return item
+    elif np.isscalar(item):
+        return np.array(item)
+    elif item is None:
+        return None
+    else:
+        raise TypeError("not support item type: {}".format(type(item)))
+
+
+def get_data_distribution(dataset1, dataset2):
+    """
+        prob_1_m: prob dis of $beta$ porpotion of batch; [2, dim]
+        prob_2_m: prob dis from $beta-alpha$ to $beta$ of batch [2, dim]
+
+        In this case, the prob is multinomial
+    """
+    # print(dir(batch_0))
+    # print(batch_0.metadata_array)
+    metadata_array_1 = to_ndarray(dataset1.dataset.metadata_array)
+    metadata_array_2 = to_ndarray(dataset2.metadata_array)
+    
+    # prob_1 --> prob dis of batch ; prob_2 --> prob dis of last $alpha$ porpotion of batch 
+    prob_1, prob_2 = np.zeros(metadata_array_1.shape[1]), np.zeros(metadata_array_1.shape[1])
+    batch_size_1 = metadata_array_1.shape[0]
+    batch_size_2 = metadata_array_2.shape[0]
+    for i in range(metadata_array_1.shape[1]):
+        prob_1[i] = metadata_array_1[:, i].sum() / batch_size_1
+
+    for j in range(metadata_array_2.shape[1]):
+        prob_2[j] = metadata_array_2[:, j].sum() / batch_size_2
+
+    # convert the prob into standard multinomial
+    prob_1_m = []
+    prob_2_m = []
+
+    for i in range(len(prob_1)):
+        p_1 = prob_1[i]
+        p_2 = prob_2[i]
+        prob_1_m.append([p_1, 1-p_1])
+        prob_2_m.append([p_2, 1-p_2])
+
+    prob_1_m = np.array(prob_1_m)
+    prob_2_m = np.array(prob_2_m)
+
+    return prob_1_m, prob_2_m
+
+
+def epsilon_kl_divergence(y_recent, y_average, epsilon=0.02):
+    # This function takes two probability distributions as input, and outputs its kl divergence. 
+    # For a discrete distribution the divergence will be computed
+    # exactly as is described in Runtian's paper.
+    ind_recent = len(y_recent)
+    ind_ave = len(y_average)
+
+    if(ind_recent != ind_ave):
+        print('The source and target data must have the same labels.') 
+
+    div_label = np.zeros(ind_recent) # initialize divergence by labels
+    for i in range(ind_recent):
+        div_label[i] = np.sum(-1 * y_recent[i] * y_average[i] / \
+        np.maximum(y_recent[i], epsilon)) + np.sum(y_average[i] * np.log(np.maximum(y_average[i], epsilon) / \
+        np.maximum(y_recent[i], epsilon))) + 1
+
+    # for i in range(ind_recent):
+    #     div_label[i] = np.sum(y_recent[i] * y_average[i] / \
+    #     np.maximum(y_recent[i], epsilon)) + np.sum(y_average[i] * np.log(y_average[i] / \
+    #     np.maximum(y_average[i], epsilon))+ 1)  
+
+    # The total divergence can be seen as a joint distribution of 
+    # separate divergences. Assume the label probabilities are the same.
+
+    return np.sum(div_label)

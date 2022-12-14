@@ -7,7 +7,7 @@ if __name__ == '__main__':
     test_frac = 0.8
     # select different fractions of dataset
     frac = np.arange(0.5, 1.1, 0.1)
-    batch_num = np.arange(1, 11, 1)
+    batch_num = np.arange(1, 15, 1)
     test_batch_num = 15
 
     loss = np.zeros(len(batch_num))
@@ -22,24 +22,6 @@ if __name__ == '__main__':
     # save and plot the results
     np.savez('results.npz', frac=frac, loss=loss, accuracy=accuracy, distance=distance)
         
-    plt.figure()
-    plt.plot(frac, loss)
-    plt.xlabel('Fraction of dataset')
-    plt.ylabel('Loss')
-    plt.savefig('loss.png')
-
-    plt.figure()
-    plt.plot(frac, accuracy)
-    plt.xlabel('Fraction of dataset')
-    plt.ylabel('Accuracy')
-    plt.savefig('accuracy.png')
-
-    plt.figure()
-    plt.plot(frac, distance)
-    plt.xlabel('Fraction of dataset')
-    plt.ylabel('Distance')
-    plt.savefig('distance.png')
-
     plt.figure()
     plt.plot(accuracy, distance)
     plt.xlabel('Accuracy')

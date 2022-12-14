@@ -6,11 +6,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from datasets.civilcomments_wpds import CivilCommentsWPDS
 from civilcomments_utils import *
-from w_distance import w_distance
+from w_distance import *
 import numpy as np
 
 
-def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epochs=10, batch_size=8, lr=1e-4, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
+def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epochs=1, batch_size=8, lr=1e-4, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
     # set up the device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
@@ -46,8 +46,8 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epoch
     eval_metric = initialize_eval_metric(eval_func)
 
     # set up the summary writer
-    logdir = os.path.join('./logs/', get_cur_time())
-    savedir = os.path.join('./checkpoints/', get_cur_time())
+    logdir = os.path.join('./logs/train', str(batch_num))
+    savedir = os.path.join('./checkpoints/', str(batch_num))
     os.makedirs(logdir, exist_ok=True)
     os.makedirs(savedir, exist_ok=True)
     logger = SummaryWriter(logdir)
@@ -92,7 +92,7 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epoch
 
         # test accuracy every 25 epochs
         if epoch % 2 == 0 and epoch != 0:
-            evaluate_model(model, val_dataloader, logger, epoch, loss_fn, eval_metric, device)
+            evaluate_model(model, val_dataloader, logger, epoch, loss_fn, eval_metric, device, mode='val')
 
         # save the model every 100 epochs
         if epoch % 2 == 0 and epoch != 0:
@@ -100,6 +100,9 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epoch
 
     # save the model
     checkpoint_save(model, savedir, epoch)
+
+    logtestdir = os.path.join('./logs/test', str(batch_num))
+    logger_test = SummaryWriter(logtestdir)
 
     # test model on a new batch / a larger fraction of the dataset
     # test_dataset = CivilCommentsWPDS(magic=seed).get_subset('test', test_frac, transform=transform) # on a larger fraction of the dataset
@@ -109,14 +112,25 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 10, num_epoch
 
         prob_train, prob_test = get_data_distribution(train_dataset, test_dataset)
         x = np.arange(0, prob_train.shape[0])
-        w_distance_metric = w_distance(x, prob_train, prob_test)
-        print('Wassertein distance between train and eval datasets:', w_distance_metric)
+        # w_distance_metric = w_distance(x, prob_train, prob_test)
+        kl_distance_metric_1 = epsilon_kl_divergence(prob_test, prob_train, epsilon=0.1)
+        kl_distance_metric_2 = epsilon_kl_divergence(prob_test, prob_train, epsilon=0.2)
+        kl_distance_metric_3 = epsilon_kl_divergence(prob_test, prob_train, epsilon=0.3)
+        kl_distance_metric_4 = epsilon_kl_divergence(prob_test, prob_train, epsilon=0.4)
 
-        test_loss, test_accuracy = evaluate_model(model, test_dataloader, logger, j, loss_fn, eval_metric, device, checkpoint=os.path.join(savedir, 'checkpoint-{:06d}.pth'.format(epoch)), mode='test')
+        print('KL distance between train and eval datasets:', kl_distance_metric_1, kl_distance_metric_2, kl_distance_metric_3, kl_distance_metric_4)
 
-    return test_loss, test_accuracy, w_distance_metric
+        logger_test.add_scalar('kl_distance_metric_1', kl_distance_metric_1, j)
+        logger_test.add_scalar('kl_distance_metric_2', kl_distance_metric_2, j)
+        logger_test.add_scalar('kl_distance_metric_3', kl_distance_metric_3, j)
+        logger_test.add_scalar('kl_distance_metric_4', kl_distance_metric_4, j)
+        # print('Wassertein distance between train and eval datasets:', w_distance_metric)
 
+        test_loss, test_accuracy = evaluate_model(model, test_dataloader, logger_test, j, loss_fn, eval_metric, device, checkpoint=os.path.join(savedir, 'checkpoint-{:06d}.pth'.format(epoch)), mode='test')
 
+    return test_loss, test_accuracy, kl_distance_metric_1
+
+'''
 def get_data_distribution(dataset_1, dataset_2):
     """
         prob_1_m: prob dis of $beta$ porpotion of batch; [2, dim]
@@ -139,6 +153,7 @@ def get_data_distribution(dataset_1, dataset_2):
         prob_2_m[i] = len(y2_array[y2_array == i]) / len(y2_array)
 
     return prob_1_m, prob_2_m
+'''
 
 if __name__ == '__main__':
     loss, accuracy, distance = train()
