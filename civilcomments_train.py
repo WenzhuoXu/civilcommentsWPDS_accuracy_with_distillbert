@@ -10,7 +10,7 @@ from w_distance import *
 import numpy as np
 
 
-def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epochs=1, batch_size=8, lr=1e-4, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
+def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epochs=5000, batch_size=32, lr=1e-4, model_name='distilbert-base-uncased', loss_func='xent', eval_func='acc'):
     # set up the device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print('Using device:', device)
@@ -46,8 +46,8 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epoch
     eval_metric = initialize_eval_metric(eval_func)
 
     # set up the summary writer
-    logdir = os.path.join('./logs/train', str(batch_num))
-    savedir = os.path.join('./checkpoints/', str(batch_num))
+    logdir = os.path.join('./logs_long/train', str(batch_num))
+    savedir = os.path.join('./checkpoints_long/', str(batch_num))
     os.makedirs(logdir, exist_ok=True)
     os.makedirs(savedir, exist_ok=True)
     logger = SummaryWriter(logdir)
@@ -101,7 +101,7 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epoch
     # save the model
     checkpoint_save(model, savedir, epoch)
 
-    logtestdir = os.path.join('./logs/test', str(batch_num))
+    logtestdir = os.path.join('./logs_long/test', str(batch_num))
     logger_test = SummaryWriter(logtestdir)
 
     # test model on a new batch / a larger fraction of the dataset
