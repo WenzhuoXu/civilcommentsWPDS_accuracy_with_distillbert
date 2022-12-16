@@ -10,3 +10,24 @@ Install dependent packages by
 pip install pip --upgrade
 pip install -r requirements.txt
 ```
+
+## Work division
+
+### Wenzhuo 
+(1) Worked on recreating training of FMOW dataset;
+(2) Developed code for Epsilon-KL Divergence function;
+(3) Assist in development  of new divergence metric;
+(4) Report: Incorporate findings from new divergence functions;
+
+### Yihang 
+(1) Formatted and tested benchmark code from Runtian;
+(2) Lead team’s coding processes;
+(3) Developed new divergence metric;
+(4) Theoritical analysis and numerical simulation on Gaussian distributions;
+(5) Report: Incorporate findings from new divergence functions;
+
+### Martha:
+(1) Determined the methods to implement as part of the baseline testing and found code to assist in the development of the baseline divergence metrics
+(2) Report: Outlined the formatting of the report, Wrote the Data section, Background section;
+(3) Testing: Developed a function to output a Gaussian distribution and a shifted Gaussian.
+(4) Presentation: Presented, recorded, and edited the presentation that provides an overview of this work.
