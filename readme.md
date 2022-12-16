@@ -26,7 +26,7 @@ pip install -r requirements.txt
 (4) Theoritical analysis and numerical simulation on Gaussian distributions;
 (5) Report: Incorporate findings from new divergence functions;
 
-### Martha:
+### Martha
 (1) Determined the methods to implement as part of the baseline testing and found code to assist in the development of the baseline divergence metrics
 (2) Report: Outlined the formatting of the report, Wrote the Data section, Background section;
 (3) Testing: Developed a function to output a Gaussian distribution and a shifted Gaussian.
