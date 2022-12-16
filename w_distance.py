@@ -21,7 +21,7 @@ def w_distance(x, p, q):
     '''
     # if data is 1D, use scipy.stats library to compute the 1-Wasserstein distance
     if x.ndim == 1:
-        return stats.wasserstein_distance(x, x, p, q)
+        return stats.wasserstein_distance(x, x, p, q), None
     # check the input
     assert x.shape[0] == p.shape[0] == q.shape[0], 'The number of bins should be the same for p and q'
     # assert np.allclose(np.sum(p), 1), 'The sum of p should be 1'
@@ -38,14 +38,14 @@ def w_distance(x, p, q):
 
 if __name__ == '__main__':
     # create two discrete distributions for testing
-    x = np.array([[0, 0], [1, 0], [0, 1], [1, 1]])
+    x = np.array([1, 2, 3, 4])
     p = np.array([0.25, 0.25, 0.25, 0.25])
-    q = np.array([0.25, 0.25, 0.25, 0.25])
+    q = np.array([0, 0.5, 0.5, 0])
 
     # compute the 1-Wasserstein distance
-    distance, T = w_distance(x, p, q)
+    distance, T = w_distance(x, q, p)
     print('The 1-Wasserstein distance between x and y is {}'.format(distance))
-
+    '''
     # test 1-Wasserstein distance on CivilComments dataset
     # load the dataset
     model_name = 'distilbert-base-uncased'
@@ -60,4 +60,5 @@ if __name__ == '__main__':
     # distance, T = w_distance(x, prob1, prob2)
     kl_div = epsilon_kl_divergence(prob1, prob2, epsilon=0.2)
     print(kl_div)
+    '''
 
