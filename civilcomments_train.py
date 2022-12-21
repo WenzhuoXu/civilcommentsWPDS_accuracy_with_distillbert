@@ -46,8 +46,8 @@ def train(frac=0.5, batch_num = 1, test_frac=0.8, test_batch_num = 15, num_epoch
     eval_metric = initialize_eval_metric(eval_func)
 
     # set up the summary writer
-    logdir = os.path.join('./logs_long/train', str(batch_num))
-    savedir = os.path.join('./checkpoints_long/', str(batch_num))
+    logdir = os.path.join('./logs/train', str(batch_num))
+    savedir = os.path.join('./checkpoints/', str(batch_num))
     os.makedirs(logdir, exist_ok=True)
     os.makedirs(savedir, exist_ok=True)
     logger = SummaryWriter(logdir)
